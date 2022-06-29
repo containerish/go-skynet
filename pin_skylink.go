@@ -23,6 +23,7 @@ func (sc *SkynetClient) PinSkylink(skylink string) (string, error) {
 			query:   url.Values{},
 			Options: Options{
 				EndpointPath:      PinEndpoint,
+				SkynetAPIKey:      sc.Options.SkynetAPIKey,
 				CustomUserAgent:   sc.Options.CustomUserAgent,
 				customContentType: sc.Options.customContentType,
 			},
@@ -34,10 +35,10 @@ func (sc *SkynetClient) PinSkylink(skylink string) (string, error) {
 		return "", errors.AddContext(err, "could not execute request")
 	}
 
-	if resp.StatusCode != http.StatusNoContent {
-		return "", fmt.Errorf("expected response status code to be %d but got %d", http.StatusNoContent, resp.StatusCode)
+	// previously, skynet returned no content(204), with verison bump it has started returning a sia path in    //body and headers along with statusOK
+	if resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK {
+		pinLink := resp.Header.Get(SkylinkHeaderKey)
+		return pinLink, nil
 	}
-
-	pinLink := resp.Header.Get(SkylinkHeaderKey)
-	return pinLink, nil
+	return "", fmt.Errorf("expected response status code to be %d or %d but got %d", http.StatusNoContent, http.StatusOK, resp.StatusCode)
 }
